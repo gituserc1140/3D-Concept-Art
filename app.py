@@ -22,6 +22,29 @@ _SPONSOR_URL = "https://github.com/sponsors/gituserc1140"
 _STREAMLIT_APP_URL = "https://3d-concept-art-u9nsolcjujhw9ngtx9vxks.streamlit.app/"
 _POLLINATIONS_BASE = "https://image.pollinations.ai/prompt/{prompt}"
 
+# ── Sketch detail options ──────────────────────────────────────────────────────
+_LINE_WEIGHT_OPTIONS = ["fine", "medium", "bold"]
+_BACKGROUND_OPTIONS = ["white", "kraft paper", "grid paper", "dark canvas"]
+_SHADING_OPTIONS = ["none", "hatching", "cel shading"]
+
+# Mapping to natural-language prompt fragments
+_LINE_WEIGHT_PROMPTS = {
+    "fine": "fine hairline ink strokes",
+    "medium": "medium-weight ink lines",
+    "bold": "bold thick ink lines",
+}
+_BACKGROUND_PROMPTS = {
+    "white": "clean white background",
+    "kraft paper": "warm kraft paper texture background",
+    "grid paper": "graph-paper grid background",
+    "dark canvas": "dark charcoal canvas background",
+}
+_SHADING_PROMPTS = {
+    "none": "no shading, outline only",
+    "hatching": "cross-hatched pencil shading",
+    "cel shading": "flat cel shading with hard shadows",
+}
+
 # ── CSS ────────────────────────────────────────────────────────────────────────
 _CSS = """
 <style>
@@ -173,6 +196,15 @@ _STYLE_OPTIONS_GENERAL = [
     "photorealistic",
 ]
 
+# 3D sketch styles with dedicated prompt templates
+_STYLE_OPTIONS_3D_SKETCH = [
+    "wireframe sketch",
+    "pencil concept",
+    "clay model sketch",
+    "ink-line turnaround",
+    "cross-section sketch",
+]
+
 # 3D-print-focused styles with dedicated prompt templates
 _STYLE_OPTIONS_3D_PRINT = [
     "3D print ready",
@@ -183,10 +215,17 @@ _STYLE_OPTIONS_3D_PRINT = [
     "sketch 3D print",
 ]
 
-_STYLE_OPTIONS = _STYLE_OPTIONS_3D_PRINT + _STYLE_OPTIONS_GENERAL
+_STYLE_OPTIONS = _STYLE_OPTIONS_3D_SKETCH + _STYLE_OPTIONS_3D_PRINT + _STYLE_OPTIONS_GENERAL
 
-# 3D-print-relevant subject presets
-_SUBJECT_OPTIONS = [
+# Subject presets — sketch-specific first, then general 3D
+_SUBJECT_OPTIONS_SKETCH = [
+    "character turnaround sheet",
+    "orthographic front / side / back views",
+    "detail close-up",
+    "assembly exploded view",
+]
+
+_SUBJECT_OPTIONS_GENERAL = [
     "figurine character",
     "terrain tile",
     "terrain scatter piece",
@@ -199,6 +238,8 @@ _SUBJECT_OPTIONS = [
     "modular dungeon tile",
 ]
 
+_SUBJECT_OPTIONS = _SUBJECT_OPTIONS_SKETCH + _SUBJECT_OPTIONS_GENERAL
+
 # Aspect ratio presets (label → (width, height))
 _ASPECT_PRESETS = {
     "1:1 Square — single piece (1024×1024)": (1024, 1024),
@@ -207,7 +248,45 @@ _ASPECT_PRESETS = {
     "16:9 Wide — panoramic scene (1024×576)": (1024, 576),
 }
 
-# ── Prompt templates per 3D-print style ───────────────────────────────────────
+# ── Prompt templates per 3D-sketch style ──────────────────────────────────────
+
+_SKETCH_STYLE_PROMPTS = {
+    "wireframe sketch": (
+        "wireframe 3D sketch concept art, {concept}. "
+        "Technical wireframe line drawing, polygon cage visible, "
+        "construction lines and edge loops highlighted, "
+        "{line_weight}, {background}, {shading}, "
+        "clean professional illustration, CAD-style aesthetics."
+    ),
+    "pencil concept": (
+        "pencil concept sketch, 3D form study, {concept}. "
+        "Hand-drawn pencil strokes conveying volume and depth, "
+        "gesture lines indicating 3D geometry, "
+        "{line_weight}, {background}, {shading}, "
+        "concept art sketchbook style."
+    ),
+    "clay model sketch": (
+        "clay model maquette sketch, {concept}. "
+        "Sculpting concept illustration, clay-like matte surfaces, "
+        "visible thumb-push texture marks, neutral warm grey material, "
+        "{line_weight}, {background}, {shading}, "
+        "soft ambient occlusion, artist turntable reference style."
+    ),
+    "ink-line turnaround": (
+        "ink-line character / object turnaround sheet, {concept}. "
+        "Multiple rotation views (front, 3/4, side) on a single sheet, "
+        "clean inking with consistent proportions, registration marks, "
+        "{line_weight}, {background}, {shading}, "
+        "professional concept art model sheet."
+    ),
+    "cross-section sketch": (
+        "cross-section engineering sketch, {concept}. "
+        "Cutaway view revealing internal structure, "
+        "annotated detail callouts, orthographic projection, "
+        "{line_weight}, {background}, {shading}, "
+        "technical illustration style."
+    ),
+}
 
 _PRINT_STYLE_PROMPTS = {
     "3D print ready": (
@@ -254,10 +333,32 @@ _PRINT_STYLE_PROMPTS = {
 }
 
 
+# ── Utilities ──────────────────────────────────────────────────────────────────
+
+def _safe_filename(*parts: str) -> str:
+    """Build a clean PNG filename from style, sketch details, and concept."""
+    joined = "_".join(p.replace(" ", "_").replace("/", "-") for p in parts if p)
+    return joined[:80] + ".png"
+
+
 # ── Image generation ───────────────────────────────────────────────────────────
 
-def build_prompt(concept: str, style: str) -> str:
+def build_prompt(
+    concept: str,
+    style: str,
+    line_weight: str = "medium",
+    background: str = "white",
+    shading: str = "none",
+) -> str:
     """Construct the full image-generation prompt for the given style."""
+    lw = _LINE_WEIGHT_PROMPTS.get(line_weight, line_weight)
+    bg = _BACKGROUND_PROMPTS.get(background, background)
+    sh = _SHADING_PROMPTS.get(shading, shading)
+
+    if style in _SKETCH_STYLE_PROMPTS:
+        return _SKETCH_STYLE_PROMPTS[style].format(
+            concept=concept, line_weight=lw, background=bg, shading=sh
+        )
     if style in _PRINT_STYLE_PROMPTS:
         return _PRINT_STYLE_PROMPTS[style].format(concept=concept)
     return (
@@ -273,12 +374,15 @@ def generate_image(
     width: int = 1024,
     height: int = 1024,
     seed: int | None = None,
+    line_weight: str = "medium",
+    background: str = "white",
+    shading: str = "none",
 ) -> tuple[bytes, str]:
     """Fetch a 3D concept art image from Pollinations.AI.
 
     Returns a tuple of (image_bytes, prompt_used).
     """
-    prompt = build_prompt(concept, style)
+    prompt = build_prompt(concept, style, line_weight=line_weight, background=background, shading=shading)
     query: dict = {
         "width": width,
         "height": height,
@@ -322,7 +426,7 @@ def main():
         """
         <div class="hero">
             <h1>3D Concept Art Generator</h1>
-            <p>Describe your scene and instantly generate stunning 3D concept art.</p>
+            <p>Design, sketch, and visualize 3D printable concepts — instantly.</p>
         </div>
         """,
         unsafe_allow_html=True,
@@ -344,6 +448,15 @@ def main():
         seed = st.sidebar.number_input("Seed", min_value=0, max_value=2**31 - 1, value=42, step=1)
 
     compare_mode = st.sidebar.checkbox("Side-by-side style comparison", value=False)
+    turnaround_mode = st.sidebar.checkbox("Multi-view turnaround (2×2 grid)", value=False)
+
+    # ── Sketch Details ─────────────────────────────────────────────
+    st.sidebar.markdown("---")
+    st.sidebar.subheader("Sketch Details")
+    st.sidebar.caption("Applied to 3D Sketch styles.")
+    line_weight = st.sidebar.selectbox("Line weight", _LINE_WEIGHT_OPTIONS, index=1)
+    background = st.sidebar.selectbox("Background", _BACKGROUND_OPTIONS, index=0)
+    shading = st.sidebar.selectbox("Shading style", _SHADING_OPTIONS, index=0)
 
     st.sidebar.markdown(
         f"""
@@ -364,7 +477,7 @@ def main():
 
     # ── Inputs ─────────────────────────────────────────────────────
     st.markdown("##### Art Style")
-    st.caption("3D-print styles appear first; general styles follow.")
+    st.caption("3D Sketch styles appear first, then 3D-print styles, then general styles.")
     style = st.selectbox("Art style", _STYLE_OPTIONS, label_visibility="collapsed")
 
     subject_choice = st.selectbox(
@@ -379,10 +492,20 @@ def main():
     else:
         concept = subject_choice
 
-    if compare_mode:
+    if compare_mode and not turnaround_mode:
         style2 = st.selectbox("Second style (comparison)", _STYLE_OPTIONS, index=1, key="style2")
     else:
         style2 = _STYLE_OPTIONS[1]
+
+    # ── Shared kwargs for generate_image ───────────────────────────
+    gen_kwargs = dict(
+        width=width,
+        height=height,
+        seed=seed,
+        line_weight=line_weight,
+        background=background,
+        shading=shading,
+    )
 
     if st.button("Generate Concept Art"):
         if not concept.strip():
@@ -391,24 +514,55 @@ def main():
 
         concept_clean = concept.strip()
 
-        if compare_mode:
+        # ── Multi-view turnaround mode ─────────────────────────────
+        if turnaround_mode:
+            views = ["front view", "side view", "back view", "top view"]
+            st.markdown('<div class="section-label">Multi-View Turnaround</div>', unsafe_allow_html=True)
+            row1_cols = st.columns(2)
+            row2_cols = st.columns(2)
+            cols_grid = [row1_cols[0], row1_cols[1], row2_cols[0], row2_cols[1]]
+            for i, (view, col) in enumerate(zip(views, cols_grid)):
+                with col:
+                    view_concept = f"{concept_clean}, {view}"
+                    try:
+                        with st.spinner(f"Rendering {view}…"):
+                            img, used_prompt = generate_image(view_concept, style, **gen_kwargs)
+                        st.markdown(
+                            f'<div class="section-label">{view.title()}</div>',
+                            unsafe_allow_html=True,
+                        )
+                        st.image(img, caption=f"{style} — {view}", use_container_width=True)
+                        fname = _safe_filename(style, line_weight, background, shading, concept_clean[:20], view)
+                        st.download_button(
+                            label="⬇ Download PNG",
+                            data=img,
+                            file_name=fname,
+                            mime="image/png",
+                            key=f"dl_tv_{i}",
+                        )
+                        with st.expander(f"Prompt — {view}"):
+                            st.code(used_prompt, language=None)
+                    except Exception as exc:
+                        st.error(f"Error on {view}: {exc}")
+
+        # ── Side-by-side comparison mode ───────────────────────────
+        elif compare_mode:
             col1, col2 = st.columns(2)
             for i, (col, s) in enumerate(zip([col1, col2], [style, style2])):
                 with col:
                     try:
                         with st.spinner(f"Rendering {s}…"):
-                            img, used_prompt = generate_image(
-                                concept_clean, s, width=width, height=height, seed=seed
-                            )
+                            img, used_prompt = generate_image(concept_clean, s, **gen_kwargs)
                         st.markdown(
                             f'<div class="section-label">{s.capitalize()}</div>',
                             unsafe_allow_html=True,
                         )
                         st.image(img, caption=f"{s} — {concept_clean.capitalize()}", use_container_width=True)
+                        fname = _safe_filename(s, line_weight, background, shading, concept_clean[:20])
                         st.download_button(
                             label="⬇ Download PNG",
                             data=img,
-                            file_name=f"{s.replace(' ', '_')}_{concept_clean[:30].replace(' ', '_')}.png",
+                            file_name=fname,
                             mime="image/png",
                             key=f"dl_{i}_{s}",
                         )
@@ -416,12 +570,12 @@ def main():
                             st.code(used_prompt, language=None)
                     except Exception as exc:
                         st.error(f"Something went wrong: {exc}")
+
+        # ── Single image mode ──────────────────────────────────────
         else:
             try:
                 with st.spinner("Rendering your concept art…"):
-                    image_bytes, used_prompt = generate_image(
-                        concept_clean, style, width=width, height=height, seed=seed
-                    )
+                    image_bytes, used_prompt = generate_image(concept_clean, style, **gen_kwargs)
 
                 st.markdown('<div class="section-label">Generated Art</div>', unsafe_allow_html=True)
                 st.image(
@@ -429,10 +583,11 @@ def main():
                     caption=f"{style.capitalize()} — {concept_clean.capitalize()}",
                     use_container_width=True,
                 )
+                fname = _safe_filename(style, line_weight, background, shading, concept_clean[:20])
                 st.download_button(
                     label="⬇ Download PNG",
                     data=image_bytes,
-                    file_name=f"{style.replace(' ', '_')}_{concept_clean[:30].replace(' ', '_')}.png",
+                    file_name=fname,
                     mime="image/png",
                 )
                 with st.expander("Prompt used"):
