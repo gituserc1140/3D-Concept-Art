@@ -21,7 +21,7 @@ def render_home(data: Dict[str, Any]):
     Adapt the rendering to your needs or replace entirely with custom
     components or a separate front-end.
     """
-    title = data.get("title", "Micro-app")
+    title = data.get("title", "3D Concept Art")
     description = data.get("description", "")
     items = data.get("items", [])
 
@@ -30,7 +30,7 @@ def render_home(data: Dict[str, Any]):
         st.write(description)
 
     if not items:
-        st.info("No items to display. Implement api_client.fetch_data() to return real data.")
+        st.info("No concept results to display yet. Add a prompt and generate a new concept.")
         return
 
     # display items in columns for a compact layout

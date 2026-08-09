@@ -1,9 +1,8 @@
-"""Streamlit-based micro-app entrypoint.
+"""Streamlit entrypoint for the 3D concept art app.
 
-This lightweight app preserves the original repository architecture but removes
-any Weather-specific logic. It demonstrates how to gather minimal inputs from
-an end user (optional API base URL and API key) and calls api_client.fetch_data()
-as an integration point. The UI is rendered via ui.render_home().
+The app gathers API settings and prompt parameters, then calls
+api_client.fetch_data() to build or fetch concept art results. Rendering stays
+delegated to ui.render_home().
 
 Run locally:
   pip install -r requirements.txt
