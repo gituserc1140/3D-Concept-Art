@@ -11,6 +11,7 @@ Deploy on Streamlit Cloud:
   Point the app at this repository and set the main file to app.py.
 """
 
+import json
 import urllib.parse
 
 import requests
@@ -440,7 +441,7 @@ def _render_poc_scorecard(track_name: str) -> None:
     score_key = track_name.lower().replace(" ", "_")
     st.markdown("##### Proof-of-concept scorecard")
     quality = st.slider("Output quality", 1, 5, 3, key=f"{score_key}_quality")
-    consistency = st.slider("Print-focused clarity", 1, 5, 3, key=f"{score_key}_consistency")
+    clarity = st.slider("Print-focused clarity", 1, 5, 3, key=f"{score_key}_clarity")
     appeal = st.slider("User appeal", 1, 5, 3, key=f"{score_key}_appeal")
     comparison = st.radio(
         "Compared with the non-print baseline, this feels:",
@@ -455,7 +456,16 @@ def _render_poc_scorecard(track_name: str) -> None:
         key=f"{score_key}_next_step",
     )
 
-    average = (quality + consistency + appeal) / 3
+    average = (quality + clarity + appeal) / 3
+    scorecard = {
+        "track": track_name,
+        "output_quality": quality,
+        "print_focused_clarity": clarity,
+        "user_appeal": appeal,
+        "baseline_comparison": comparison,
+        "keep_exploring": next_step,
+        "average_score": round(average, 2),
+    }
     if average >= 4 and comparison == "better" and next_step == "yes":
         recommendation = "Recommendation: double down on this print-focused use case."
     elif average < 3 or comparison == "worse" or next_step == "no":
@@ -463,6 +473,13 @@ def _render_poc_scorecard(track_name: str) -> None:
     else:
         recommendation = "Recommendation: keep testing before expanding or removing the 3D-print direction."
     st.info(recommendation)
+    st.download_button(
+        label="⬇ Download scorecard",
+        data=json.dumps({**scorecard, "recommendation": recommendation}, indent=2),
+        file_name=f"{score_key}_scorecard.json",
+        mime="application/json",
+        key=f"{score_key}_download",
+    )
 
 
 # ── Image generation ───────────────────────────────────────────────────────────
@@ -758,6 +775,7 @@ def main():
         # ── Side-by-side comparison mode ───────────────────────────
         elif compare_mode:
             col1, col2 = st.columns(2)
+            compare_success = True
             for i, (col, s) in enumerate(zip([col1, col2], [style, style2])):
                 with col:
                     try:
@@ -779,8 +797,9 @@ def main():
                         with st.expander("Prompt used"):
                             st.code(used_prompt, language=None)
                     except Exception as exc:
+                        compare_success = False
                         st.error(f"Something went wrong: {exc}")
-            if poc_track != "None":
+            if poc_track != "None" and compare_success:
                 _render_poc_scorecard(poc_track)
 
         # ── Single image mode ──────────────────────────────────────
