@@ -3,7 +3,7 @@
 Create 3D concept art prompts and generate Pollinations image URLs from a simple Streamlit interface.
 
 [![View on GitHub](https://img.shields.io/badge/GitHub-Repository-181717?logo=github)](https://github.com/gituserc1140/3D-Concept-Art)
-[![Sponsor on GitHub](https://img.shields.io/badge/GitHub-Sponsors-ea4aaa?logo=githubsponsors)](https://github.com/sponsors/gituserc1140)
+[![Sponsor on GitHub](https://img.shields.io/badge/GitHub-Sponsors-ea4aaa?logo=github-sponsors)](https://github.com/sponsors/gituserc1140)
 [![Run with Streamlit](https://img.shields.io/badge/Streamlit-Run%20Locally-FF4B4B?logo=streamlit)](#run-locally)
 
 ## What the app does
