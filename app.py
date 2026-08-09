@@ -291,46 +291,74 @@ _SKETCH_STYLE_PROMPTS = {
 
 _PRINT_STYLE_PROMPTS = {
     "3D print ready": (
-        "3D print ready concept art, {concept}. "
-        "Clean geometry optimised for FDM printing, visible wall thickness, "
-        "minimal overhangs, support-free design where possible, "
-        "uniform neutral lighting to reveal surface topology, white studio background, "
-        "professional product render, sharp edges."
+        "3D concept art render of a 3D-printable object, {concept}. "
+        "{print_method} print, {material_colour} {material_desc} material, "
+        "manifold watertight mesh, uniform wall thickness, minimal overhangs, "
+        "support-free design where possible, clean sharp edges, "
+        "plain white studio background, soft box lighting, "
+        "product visualisation render, NOT a photograph, NOT a painting, "
+        "NOT a real object — concept art illustration only."
     ),
     "miniature figurine": (
-        "miniature figurine concept art, {concept}. "
-        "Tabletop-scale figurine design, heroic proportions, "
-        "exaggerated detail for small-scale printing, textured base included, "
-        "neutral grey material preview, soft studio lighting, "
-        "28mm scale miniature aesthetic."
+        "3D concept art render of a 3D-printable tabletop miniature figurine, {concept}. "
+        "{print_method} print, {material_colour} {material_desc} material, "
+        "28mm heroic-scale proportions, exaggerated surface detail for small-scale printing, "
+        "integral textured display base, single isolated object on plain white background, "
+        "neutral studio lighting to reveal surface topology, "
+        "NOT a photograph, NOT a painting — product concept art only."
     ),
     "architectural model": (
-        "architectural scale model concept art, {concept}. "
-        "Cross-section view showing internal structure, "
-        "clean white model aesthetic, layer lines suggested, "
-        "precise geometric forms, professional architectural illustration, "
-        "isometric perspective, monochrome with accent colour highlights."
+        "3D concept art render of a 3D-printed architectural scale model, {concept}. "
+        "{print_method} print, {material_colour} {material_desc} material, "
+        "precise geometric forms, clean monochrome surfaces, isometric perspective, "
+        "plain white studio background, soft top-down lighting, "
+        "professional architectural visualisation, "
+        "NOT a photograph, NOT a painting — concept art illustration only."
     ),
     "technical blueprint": (
-        "technical blueprint concept art, {concept}. "
+        "technical blueprint concept art for a 3D-printable design, {concept}. "
         "Engineering drawing style, orthographic projection, "
-        "dimension lines and annotations, grid paper background, "
-        "cyan-on-navy blueprint colour scheme, fine line detail, "
-        "sectional view, 3D printable assembly breakdown."
+        "dimension lines and annotations, fine line detail, "
+        "sectional cutaway view, 3D printable assembly breakdown, "
+        "cyan-on-navy blueprint colour scheme, grid paper background, "
+        "NOT a photograph, NOT a render — technical illustration only."
     ),
     "resin print concept": (
-        "resin 3D print concept art, {concept}. "
-        "High-detail resin print aesthetic, ultra-fine surface detail, "
-        "smooth organic curves, translucent material preview, "
-        "SLA/MSLA layer resolution implied, dramatic backlit studio lighting, "
-        "jewellery-quality finish, intricate filigree detail."
+        "3D concept art render of a high-detail resin-printed object, {concept}. "
+        "{print_method} print, {material_colour} {material_desc} resin material, "
+        "ultra-fine surface detail, smooth organic curves, "
+        "jewellery-quality finish, intricate filigree detail, "
+        "plain white studio background, dramatic rim lighting, "
+        "NOT a photograph, NOT a painting — product concept art only."
     ),
     "sketch 3D print": (
-        "sketch-style 3D print concept art, {concept}. "
-        "Hand-drawn pencil sketch aesthetic, 3D printable figurine design, "
-        "detailed line art, blueprint style, technical illustration, "
-        "white background with fine ink lines."
+        "hand-drawn pencil sketch concept art for a 3D-printable design, {concept}. "
+        "Detailed technical line art on white background, "
+        "3D printable object with visible structure and proportions, "
+        "blueprint-style annotation style, fine ink lines, "
+        "NOT a photograph, NOT a 3D render — illustration/sketch only."
     ),
+}
+
+# ── 3D-print-specific sidebar options ─────────────────────────────────────────
+_PRINT_METHOD_OPTIONS = ["FDM (filament)", "SLA resin", "SLS nylon"]
+_PRINT_METHOD_PROMPTS = {
+    "FDM (filament)": "FDM filament",
+    "SLA resin": "SLA resin",
+    "SLS nylon": "SLS nylon powder",
+}
+_MATERIAL_COLOUR_OPTIONS = ["white", "grey", "black", "translucent", "metallic"]
+_MATERIAL_COLOUR_PROMPTS = {
+    "white": "matte white",
+    "grey": "neutral grey",
+    "black": "matte black",
+    "translucent": "semi-translucent",
+    "metallic": "metallic silver",
+}
+_MATERIAL_DESC_PROMPTS = {
+    "FDM (filament)": "PLA plastic with visible layer lines",
+    "SLA resin": "smooth resin with micro-detail",
+    "SLS nylon": "slightly grainy nylon powder-fused surface",
 }
 
 
@@ -350,18 +378,28 @@ def build_prompt(
     line_weight: str = "medium",
     background: str = "white",
     shading: str = "none",
+    print_method: str = "FDM (filament)",
+    material_colour: str = "white",
 ) -> str:
     """Construct the full image-generation prompt for the given style."""
     lw = _LINE_WEIGHT_PROMPTS.get(line_weight, line_weight)
     bg = _BACKGROUND_PROMPTS.get(background, background)
     sh = _SHADING_PROMPTS.get(shading, shading)
+    pm = _PRINT_METHOD_PROMPTS.get(print_method, print_method)
+    mc = _MATERIAL_COLOUR_PROMPTS.get(material_colour, material_colour)
+    md = _MATERIAL_DESC_PROMPTS.get(print_method, "plastic material")
 
     if style in _SKETCH_STYLE_PROMPTS:
         return _SKETCH_STYLE_PROMPTS[style].format(
             concept=concept, line_weight=lw, background=bg, shading=sh
         )
     if style in _PRINT_STYLE_PROMPTS:
-        return _PRINT_STYLE_PROMPTS[style].format(concept=concept)
+        return _PRINT_STYLE_PROMPTS[style].format(
+            concept=concept,
+            print_method=pm,
+            material_colour=mc,
+            material_desc=md,
+        )
     return (
         f"3D concept art, {style} style, {concept}. "
         "Highly detailed, dramatic lighting, cinematic composition, "
@@ -378,17 +416,29 @@ def generate_image(
     line_weight: str = "medium",
     background: str = "white",
     shading: str = "none",
+    print_method: str = "FDM (filament)",
+    material_colour: str = "white",
 ) -> tuple[bytes, str]:
     """Fetch a 3D concept art image from Pollinations.AI.
 
     Returns a tuple of (image_bytes, prompt_used).
     """
-    prompt = build_prompt(concept, style, line_weight=line_weight, background=background, shading=shading)
+    prompt = build_prompt(
+        concept,
+        style,
+        line_weight=line_weight,
+        background=background,
+        shading=shading,
+        print_method=print_method,
+        material_colour=material_colour,
+    )
+    # Use flux-pro for higher-fidelity 3D print renders; flux for sketches (faster)
+    model = "flux-pro" if style in _STYLE_OPTIONS_3D_PRINT else "flux"
     query: dict = {
         "width": width,
         "height": height,
         "nologo": "true",
-        "model": "flux",
+        "model": model,
     }
     if seed is not None:
         query["seed"] = seed
@@ -451,13 +501,35 @@ def main():
     compare_mode = st.sidebar.checkbox("Side-by-side style comparison", value=False)
     turnaround_mode = st.sidebar.checkbox("Multi-view turnaround (2×2 grid)", value=False)
 
-    # ── Sketch Details ─────────────────────────────────────────────
     st.sidebar.markdown("---")
-    st.sidebar.subheader("Sketch Details")
-    st.sidebar.caption("Applied to 3D Sketch styles.")
-    line_weight = st.sidebar.selectbox("Line weight", _LINE_WEIGHT_OPTIONS, index=1)
-    background = st.sidebar.selectbox("Background", _BACKGROUND_OPTIONS, index=0)
-    shading = st.sidebar.selectbox("Shading style", _SHADING_OPTIONS, index=0)
+
+    # ── Inputs ─────────────────────────────────────────────────────
+    st.markdown("##### Art Style")
+    st.caption("3D Sketch styles appear first, then 3D-print styles, then general styles.")
+    style = st.selectbox("Art style", _STYLE_OPTIONS, label_visibility="collapsed")
+
+    # ── Conditional style-specific sidebar controls ─────────────────
+    is_print_style = style in _STYLE_OPTIONS_3D_PRINT
+    is_sketch_style = style in _STYLE_OPTIONS_3D_SKETCH
+
+    # Default values (used when the relevant section is hidden)
+    line_weight = _LINE_WEIGHT_OPTIONS[1]
+    background = _BACKGROUND_OPTIONS[0]
+    shading = _SHADING_OPTIONS[0]
+    print_method = _PRINT_METHOD_OPTIONS[0]
+    material_colour = _MATERIAL_COLOUR_OPTIONS[0]
+
+    if is_sketch_style:
+        st.sidebar.subheader("Sketch Details")
+        st.sidebar.caption("Applied to 3D Sketch styles.")
+        line_weight = st.sidebar.selectbox("Line weight", _LINE_WEIGHT_OPTIONS, index=1)
+        background = st.sidebar.selectbox("Background", _BACKGROUND_OPTIONS, index=0)
+        shading = st.sidebar.selectbox("Shading style", _SHADING_OPTIONS, index=0)
+    elif is_print_style:
+        st.sidebar.subheader("3D Print Settings")
+        st.sidebar.caption("Applied to 3D Print styles — improves accuracy.")
+        print_method = st.sidebar.selectbox("Print method", _PRINT_METHOD_OPTIONS, index=0)
+        material_colour = st.sidebar.selectbox("Material colour", _MATERIAL_COLOUR_OPTIONS, index=0)
 
     st.sidebar.markdown(
         f"""
@@ -476,11 +548,6 @@ def main():
         unsafe_allow_html=True,
     )
 
-    # ── Inputs ─────────────────────────────────────────────────────
-    st.markdown("##### Art Style")
-    st.caption("3D Sketch styles appear first, then 3D-print styles, then general styles.")
-    style = st.selectbox("Art style", _STYLE_OPTIONS, label_visibility="collapsed")
-
     subject_choice = st.selectbox(
         "Pick a subject (or choose 'Custom' to type your own)",
         ["Custom"] + _SUBJECT_OPTIONS,
@@ -492,6 +559,26 @@ def main():
         )
     else:
         concept = subject_choice
+
+    # ── 3D print tips ───────────────────────────────────────────────
+    if is_print_style:
+        with st.expander("💡 Tips for better 3D print art"):
+            st.markdown(
+                """
+**Describe a single, isolated object** — avoid scenes with multiple items or backgrounds.
+
+**Keep it simple and geometric** — e.g. *"dragon skull with hollow eye sockets"* rather than a complex scene.
+
+**Mention scale or use-case** — e.g. *"28mm tabletop miniature"*, *"architectural facade tile"*, *"ring design for resin printing"*.
+
+**Avoid photographic language** — don't use terms like *"realistic photo"* or *"DSLR"*. Instead try *"product render"* or *"studio visualisation"*.
+
+**Good example prompts:**
+- `hollow geometric sphere with interlocking lattice, 28mm scale`
+- `modular dungeon wall tile, single piece, flat base`
+- `articulated robot arm with visible joint detail`
+                """
+            )
 
     if compare_mode and not turnaround_mode:
         style2 = st.selectbox("Second style (comparison)", _STYLE_OPTIONS, index=1, key="style2")
@@ -506,6 +593,8 @@ def main():
         line_weight=line_weight,
         background=background,
         shading=shading,
+        print_method=print_method,
+        material_colour=material_colour,
     )
 
     if st.button("Generate Concept Art"):
