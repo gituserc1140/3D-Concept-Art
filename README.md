@@ -1,68 +1,59 @@
-# Micro-app template
+# 3D Concept Art
 
-This repository is a minimal, generic micro-app template built with Streamlit.
-It preserves a simple architecture intended to be easy to adapt for any
-API-driven micro-application.
+Create 3D concept art prompts and generate Pollinations image URLs from a simple Streamlit interface.
 
-Contents
-- app.py — Streamlit entrypoint that gathers minimal user inputs and calls api_client.fetch_data()
-- api_client.py — API client module with a `make_request()` helper and a minimal `fetch_data()` example
-- ui.py — UI layout module that renders data using Streamlit
-- config/ — configuration module with placeholder settings
-- requirements.txt — minimal dependencies
+[![View on GitHub](https://img.shields.io/badge/GitHub-Repository-181717?logo=github)](https://github.com/gituserc1140/3D-Concept-Art)
+[![Sponsor on GitHub](https://img.shields.io/badge/GitHub-Sponsors-ea4aaa?logo=github-sponsors)](https://github.com/sponsors/gituserc1140)
+[![Run with Streamlit](https://img.shields.io/badge/Streamlit-Run%20Locally-FF4B4B?logo=streamlit)](#run-locally)
 
-Quick start
+## What the app does
+
+- Accepts a concept prompt and optional image parameters
+- Builds a Pollinations image endpoint URL for 3D concept art generation
+- Lets users test API settings from the Streamlit UI
+
+## Project files
+
+- `app.py` — Streamlit entrypoint and top-level controls
+- `api_client.py` — API request helpers and Pollinations URL generation
+- `ui.py` — result rendering helpers
+- `config/settings.py` — configurable API defaults
+
+## Run locally
+
 1. Install dependencies
+   ```bash
    pip install -r requirements.txt
-
-2. Run locally
+   ```
+2. Start Streamlit
+   ```bash
    streamlit run app.py
+   ```
 
-Using the template
-- The primary integration point is api_client.fetch_data(). Replace the placeholder
-  implementation with calls to your API, including authentication, pagination,
-  and error handling. Keep fetch_data() independent of Streamlit so it remains
-  testable and reusable.
+## Using the app
 
-- config/settings.py contains default values for API_BASE_URL and API_KEY. You
-  can set these using environment variables or provide values at runtime via
-  the Streamlit app input fields.
+1. Set `API_BASE_URL` to your image API endpoint
+2. For Pollinations, use a base URL such as `https://image.pollinations.ai`
+3. Enter parameters as JSON, for example:
+   ```json
+   {
+     "prompt": "cinematic 3D concept art spaceship hangar",
+     "model": "flux",
+     "width": 1024,
+     "height": 1024
+   }
+   ```
+4. Click **Generate concept**
 
-- ui.py contains simple rendering logic with Streamlit. Modify or replace it to
-  match your UI needs (components, layout, charts, etc.).
+## Configuration
 
-How to plug in a new API
-1. Update config/settings.py or set environment variables:
-   - API_BASE_URL: base URL for your API
-   - API_KEY: optional API key (alternatively, prompt users for the key in the UI)
+- `config/settings.py` provides defaults for `API_BASE_URL`, `API_KEY`, and `DEFAULT_TIMEOUT`
+- You can override `API_BASE_URL` and `API_KEY` with environment variables or by entering values in the Streamlit UI
 
-2. Implement the API calls in api_client.fetch_data() (or add helper functions):
-   - Use the make_request() helper for consistent URL building and timeouts
-   - Add authentication (bearer tokens, API keys, custom headers) as needed
-   - Parse and return a plain Python dict with a shape the UI expects
+## Notes
 
-3. Adjust the UI (ui.py) and app behavior (app.py) to pass parameters and show
-   the results in a user-friendly way.
+- If the app is still pointed at the placeholder example API, it returns sample content so the UI remains usable.
 
-## Pollinations endpoint usage
-- If `API_BASE_URL` contains `pollinations.ai`, `fetch_data()` now builds a
-  Pollinations image endpoint URL using `prompt` from Parameters JSON.
-- Example Parameters JSON:
-  `{"prompt":"futuristic 3D concept art city","model":"flux","width":1024,"height":1024}`
+## License
 
-
-Extending the template
-- Add tests for api_client.fetch_data() and UI rendering logic.
-- Add a Dockerfile or GitHub Actions workflow for CI and deployment.
-- Replace the placeholder items with richer domain models and components.
-
-License
-Add a LICENSE file appropriate for your project.
-
-Example Prompt 
-
--lets refactor this repo & streamlit app to work with "api and documentation link" so the end user can insert an api key on the front end and interact with the app.
-
-Example Prompt 2
-
--Lets use this app repo "Insert App Repo link" as a reference for the streamlit UI design and repo UI design & description but dont copy the architecture or description make it relevant to the brand of the API "insert reference".
+This repository does not currently include a LICENSE file.
