@@ -11,6 +11,7 @@ Deploy on Streamlit Cloud:
   Point the app at this repository and set the main file to app.py.
 """
 
+import json
 import urllib.parse
 
 import requests
@@ -241,6 +242,37 @@ _SUBJECT_OPTIONS_GENERAL = [
 
 _SUBJECT_OPTIONS = _SUBJECT_OPTIONS_SKETCH + _SUBJECT_OPTIONS_GENERAL
 
+_POC_TRACKS = {
+    "Miniature figurine validation": {
+        "style": "miniature figurine",
+        "style2": "pencil concept",
+        "concept": "armored owl knight, 28mm tabletop miniature, single isolated figure, textured base",
+        "aspect_label": "3:4 Portrait — tall figurine (768×1024)",
+        "print_method": "SLA resin",
+        "material_colour": "grey",
+        "focus": "Validate whether print-first prompts produce clearer, more useful miniature concepts than a sketch-first baseline.",
+        "checks": [
+            "Surface detail reads clearly at small scale.",
+            "Pose, silhouette, and base remain easy to understand.",
+            "The print-focused result feels more actionable than the comparison style.",
+        ],
+    },
+    "Architectural model validation": {
+        "style": "architectural model",
+        "style2": "wireframe sketch",
+        "concept": "modular courtyard facade tile with arches, single printable architectural study piece",
+        "aspect_label": "4:3 Landscape — terrain tile (1024×768)",
+        "print_method": "FDM (filament)",
+        "material_colour": "white",
+        "focus": "Test whether print-first prompts better communicate structure, geometry, and fabrication intent for model pieces.",
+        "checks": [
+            "Primary forms stay geometric and readable.",
+            "The concept suggests a believable printable single piece.",
+            "The print-focused result is more useful than the sketch comparison.",
+        ],
+    },
+}
+
 # Aspect ratio presets (label → (width, height))
 _ASPECT_PRESETS = {
     "1:1 Square — single piece (1024×1024)": (1024, 1024),
@@ -370,6 +402,86 @@ def _safe_filename(*parts: str) -> str:
     return joined[:80] + ".png"
 
 
+def _apply_poc_preset(track_name: str) -> None:
+    """Load a proof-of-concept preset into Streamlit session state."""
+    preset = _POC_TRACKS[track_name]
+    st.session_state["aspect_label"] = preset["aspect_label"]
+    st.session_state["compare_mode"] = True
+    st.session_state["turnaround_mode"] = False
+    st.session_state["style"] = preset["style"]
+    st.session_state["style2"] = preset["style2"]
+    st.session_state["subject_choice"] = "Custom"
+    st.session_state["concept_input"] = preset["concept"]
+    st.session_state["print_method"] = preset["print_method"]
+    st.session_state["material_colour"] = preset["material_colour"]
+
+
+def _render_poc_brief(track_name: str) -> None:
+    """Show the current proof-of-concept track and what to evaluate."""
+    preset = _POC_TRACKS[track_name]
+    checks = "".join(f"<li>{check}</li>" for check in preset["checks"])
+    st.markdown(
+        f"""
+        <div class="result-card">
+            <div class="section-label">Proof-of-Concept Track</div>
+            <strong>{track_name}</strong><br>
+            {preset["focus"]}<br><br>
+            <strong>Recommended comparison:</strong> {preset["style"]} vs {preset["style2"]}<br>
+            <strong>Suggested prompt:</strong> {preset["concept"]}<br><br>
+            <strong>What to check:</strong>
+            <ul>{checks}</ul>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def _render_poc_scorecard(track_name: str) -> None:
+    """Render a lightweight evaluation scorecard for the proof-of-concept."""
+    score_key = track_name.lower().replace(" ", "_")
+    st.markdown("##### Proof-of-concept scorecard")
+    quality = st.slider("Output quality", 1, 5, 3, key=f"{score_key}_quality")
+    clarity = st.slider("Print-focused clarity", 1, 5, 3, key=f"{score_key}_clarity")
+    appeal = st.slider("User appeal", 1, 5, 3, key=f"{score_key}_appeal")
+    comparison = st.radio(
+        "Compared with the non-print baseline, this feels:",
+        ["better", "about the same", "worse"],
+        horizontal=True,
+        key=f"{score_key}_comparison",
+    )
+    next_step = st.radio(
+        "Would you keep exploring this direction?",
+        ["yes", "maybe", "no"],
+        horizontal=True,
+        key=f"{score_key}_next_step",
+    )
+
+    average = (quality + clarity + appeal) / 3
+    scorecard = {
+        "track": track_name,
+        "output_quality": quality,
+        "print_focused_clarity": clarity,
+        "user_appeal": appeal,
+        "baseline_comparison": comparison,
+        "keep_exploring": next_step,
+        "average_score": round(average, 2),
+    }
+    if average >= 4 and comparison == "better" and next_step == "yes":
+        recommendation = "Recommendation: double down on this print-focused use case."
+    elif average < 3 or comparison == "worse" or next_step == "no":
+        recommendation = "Recommendation: pivot this use case toward broader 3D concept visualisation."
+    else:
+        recommendation = "Recommendation: keep testing before expanding or removing the 3D-print direction."
+    st.info(recommendation)
+    st.download_button(
+        label="⬇ Download scorecard",
+        data=json.dumps({**scorecard, "recommendation": recommendation}, indent=2),
+        file_name=f"{score_key}_scorecard.json",
+        mime="application/json",
+        key=f"{score_key}_download",
+    )
+
+
 # ── Image generation ───────────────────────────────────────────────────────────
 
 def build_prompt(
@@ -486,27 +598,42 @@ def main():
     # ── Sidebar ────────────────────────────────────────────────────
     st.sidebar.header("Settings")
 
+    poc_track = st.sidebar.selectbox(
+        "Proof-of-concept track",
+        ["None"] + list(_POC_TRACKS.keys()),
+        key="poc_track",
+    )
+    if poc_track != "None":
+        st.sidebar.caption("Apply a focused experiment preset before generating images.")
+        if st.sidebar.button("Apply proof-of-concept preset"):
+            _apply_poc_preset(poc_track)
+
     aspect_label = st.sidebar.selectbox(
         "Print bed aspect ratio",
         list(_ASPECT_PRESETS.keys()),
         index=0,
+        key="aspect_label",
     )
     width, height = _ASPECT_PRESETS[aspect_label]
 
-    seed_enabled = st.sidebar.checkbox("Fix random seed (reproducible results)", value=False)
+    seed_enabled = st.sidebar.checkbox(
+        "Fix random seed (reproducible results)",
+        value=False,
+        key="seed_enabled",
+    )
     seed: int | None = None
     if seed_enabled:
         seed = st.sidebar.number_input("Seed", min_value=0, max_value=2**31 - 1, value=42, step=1)
 
-    compare_mode = st.sidebar.checkbox("Side-by-side style comparison", value=False)
-    turnaround_mode = st.sidebar.checkbox("Multi-view turnaround (2×2 grid)", value=False)
+    compare_mode = st.sidebar.checkbox("Side-by-side style comparison", value=False, key="compare_mode")
+    turnaround_mode = st.sidebar.checkbox("Multi-view turnaround (2×2 grid)", value=False, key="turnaround_mode")
 
     st.sidebar.markdown("---")
 
     # ── Inputs ─────────────────────────────────────────────────────
     st.markdown("##### Art Style")
     st.caption("3D Sketch styles appear first, then 3D-print styles, then general styles.")
-    style = st.selectbox("Art style", _STYLE_OPTIONS, label_visibility="collapsed")
+    style = st.selectbox("Art style", _STYLE_OPTIONS, label_visibility="collapsed", key="style")
 
     # ── Conditional style-specific sidebar controls ─────────────────
     is_print_style = style in _STYLE_OPTIONS_3D_PRINT
@@ -522,14 +649,19 @@ def main():
     if is_sketch_style:
         st.sidebar.subheader("Sketch Details")
         st.sidebar.caption("Applied to 3D Sketch styles.")
-        line_weight = st.sidebar.selectbox("Line weight", _LINE_WEIGHT_OPTIONS, index=1)
-        background = st.sidebar.selectbox("Background", _BACKGROUND_OPTIONS, index=0)
-        shading = st.sidebar.selectbox("Shading style", _SHADING_OPTIONS, index=0)
+        line_weight = st.sidebar.selectbox("Line weight", _LINE_WEIGHT_OPTIONS, index=1, key="line_weight")
+        background = st.sidebar.selectbox("Background", _BACKGROUND_OPTIONS, index=0, key="background")
+        shading = st.sidebar.selectbox("Shading style", _SHADING_OPTIONS, index=0, key="shading")
     elif is_print_style:
         st.sidebar.subheader("3D Print Settings")
         st.sidebar.caption("Applied to 3D Print styles — improves accuracy.")
-        print_method = st.sidebar.selectbox("Print method", _PRINT_METHOD_OPTIONS, index=0)
-        material_colour = st.sidebar.selectbox("Material colour", _MATERIAL_COLOUR_OPTIONS, index=0)
+        print_method = st.sidebar.selectbox("Print method", _PRINT_METHOD_OPTIONS, index=0, key="print_method")
+        material_colour = st.sidebar.selectbox(
+            "Material colour",
+            _MATERIAL_COLOUR_OPTIONS,
+            index=0,
+            key="material_colour",
+        )
 
     st.sidebar.markdown(
         f"""
@@ -548,14 +680,19 @@ def main():
         unsafe_allow_html=True,
     )
 
+    if poc_track != "None":
+        _render_poc_brief(poc_track)
+
     subject_choice = st.selectbox(
         "Pick a subject (or choose 'Custom' to type your own)",
         ["Custom"] + _SUBJECT_OPTIONS,
+        key="subject_choice",
     )
     if subject_choice == "Custom":
         concept = st.text_input(
             "Describe your concept",
             placeholder="e.g. ancient temple overgrown with bioluminescent plants",
+            key="concept_input",
         )
     else:
         concept = subject_choice
@@ -638,6 +775,7 @@ def main():
         # ── Side-by-side comparison mode ───────────────────────────
         elif compare_mode:
             col1, col2 = st.columns(2)
+            compare_success = True
             for i, (col, s) in enumerate(zip([col1, col2], [style, style2])):
                 with col:
                     try:
@@ -659,7 +797,10 @@ def main():
                         with st.expander("Prompt used"):
                             st.code(used_prompt, language=None)
                     except Exception as exc:
+                        compare_success = False
                         st.error(f"Something went wrong: {exc}")
+            if poc_track != "None" and compare_success:
+                _render_poc_scorecard(poc_track)
 
         # ── Single image mode ──────────────────────────────────────
         else:
@@ -682,6 +823,8 @@ def main():
                 )
                 with st.expander("Prompt used"):
                     st.code(used_prompt, language=None)
+                if poc_track != "None":
+                    _render_poc_scorecard(poc_track)
 
             except Exception as exc:
                 st.error(f"Something went wrong: {exc}")

@@ -46,6 +46,14 @@ Create 3D concept art prompts and generate Pollinations image URLs from a simple
    ```
 4. Click **Generate concept**
 
+## Proof-of-concept workflow
+
+- Use the **Proof-of-concept track** control in the sidebar to load a focused 3D-print experiment.
+- Start with either **Miniature figurine validation** or **Architectural model validation**.
+- Apply the preset, generate the print-focused result, and compare it against the paired sketch baseline.
+- Use the in-app scorecard to rate output quality, print-focused clarity, and user appeal.
+- If the print-focused output consistently scores well and feels better than the baseline, keep investing in the 3D-print direction; otherwise, reposition the app around broader 3D concept visualization.
+
 ## Configuration
 
 - `config/settings.py` provides defaults for `API_BASE_URL`, `API_KEY`, and `DEFAULT_TIMEOUT`
