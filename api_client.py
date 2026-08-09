@@ -8,6 +8,7 @@ This module provides a small request wrapper `make_request()` and a minimal
 import os
 import requests
 from typing import Any, Dict, Optional
+from urllib.parse import quote, urlencode
 from config import settings
 
 
@@ -46,9 +47,10 @@ def fetch_data(params: Optional[Dict[str, Any]] = None, api_key: Optional[str] =
       the parsed result, or an error payload on failure.
     """
     params = params or {}
+    base_url = (settings.API_BASE_URL or "").rstrip("/")
 
     # if still pointing at the example placeholder base, return fake data
-    if (not settings.API_BASE_URL) or ("example.com" in settings.API_BASE_URL):
+    if (not base_url) or ("example.com" in base_url):
         return {
             "title": "Micro-app sample",
             "description": "Replace api_client.fetch_data() with calls to your API",
@@ -56,6 +58,31 @@ def fetch_data(params: Optional[Dict[str, Any]] = None, api_key: Optional[str] =
                 {"id": 1, "name": "Example item A", "value": 100},
                 {"id": 2, "name": "Example item B", "value": 200},
             ],
+        }
+
+    if "pollinations.ai" in base_url:
+        prompt = str(params.get("prompt", "")).strip()
+        if not prompt:
+            return {
+                "title": "Missing prompt",
+                "description": "For Pollinations, pass a 'prompt' value in Parameters JSON.",
+                "items": [],
+            }
+
+        pollinations_params = {k: v for k, v in params.items() if k != "prompt" and v not in (None, "")}
+        query = urlencode(pollinations_params)
+        prompt_segment = quote(prompt, safe="")
+        if base_url.endswith("/prompt"):
+            image_url = f"{base_url}/{prompt_segment}"
+        else:
+            image_url = f"{base_url}/prompt/{prompt_segment}"
+        if query:
+            image_url = f"{image_url}?{query}"
+
+        return {
+            "title": "Pollinations image endpoint",
+            "description": "Generated image URL from Pollinations API.",
+            "items": [{"id": 1, "name": prompt, "value": image_url}],
         }
 
     # attempt a real API call to the generic 'data' path. Adapt path as needed.

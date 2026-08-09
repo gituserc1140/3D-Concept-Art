@@ -44,6 +44,12 @@ How to plug in a new API
 3. Adjust the UI (ui.py) and app behavior (app.py) to pass parameters and show
    the results in a user-friendly way.
 
+Pollinations endpoint usage
+- If `API_BASE_URL` contains `pollinations.ai`, `fetch_data()` now builds a
+  Pollinations image endpoint URL using `prompt` from Parameters JSON.
+- Example Parameters JSON:
+  `{"prompt":"futuristic 3D concept art city","model":"flux","width":1024,"height":1024}`
+
 Extending the template
 - Add tests for api_client.fetch_data() and UI rendering logic.
 - Add a Dockerfile or GitHub Actions workflow for CI and deployment.
