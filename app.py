@@ -381,6 +381,8 @@ def main():
 
     if compare_mode:
         style2 = st.selectbox("Second style (comparison)", _STYLE_OPTIONS, index=1, key="style2")
+    else:
+        style2 = _STYLE_OPTIONS[1]
 
     if st.button("Generate Concept Art"):
         if not concept.strip():
@@ -391,7 +393,7 @@ def main():
 
         if compare_mode:
             col1, col2 = st.columns(2)
-            for col, s in zip([col1, col2], [style, style2]):
+            for i, (col, s) in enumerate(zip([col1, col2], [style, style2])):
                 with col:
                     try:
                         with st.spinner(f"Rendering {s}…"):
@@ -408,7 +410,7 @@ def main():
                             data=img,
                             file_name=f"{s.replace(' ', '_')}_{concept_clean[:30].replace(' ', '_')}.png",
                             mime="image/png",
-                            key=f"dl_{s}",
+                            key=f"dl_{i}_{s}",
                         )
                         with st.expander("Prompt used"):
                             st.code(used_prompt, language=None)
