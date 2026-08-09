@@ -50,6 +50,7 @@ How to plug in a new API
 - Example Parameters JSON:
   `{"prompt":"futuristic 3D concept art city","model":"flux","width":1024,"height":1024}`
 
+
 Extending the template
 - Add tests for api_client.fetch_data() and UI rendering logic.
 - Add a Dockerfile or GitHub Actions workflow for CI and deployment.

@@ -72,10 +72,10 @@ def fetch_data(params: Optional[Dict[str, Any]] = None, api_key: Optional[str] =
         pollinations_params = {k: v for k, v in params.items() if k != "prompt" and v not in (None, "")}
         query = urlencode(pollinations_params)
         prompt_segment = quote(prompt, safe="")
-        if urlsplit(base_url).path.rstrip("/").endswith("/prompt"):
-            image_url = f"{base_url}/{prompt_segment}"
-        else:
-            image_url = f"{base_url}/prompt/{prompt_segment}"
+        pollinations_base = base_url
+        if urlsplit(pollinations_base).path.rstrip("/").endswith("/prompt"):
+            pollinations_base = pollinations_base[: -len("/prompt")].rstrip("/")
+        image_url = f"{pollinations_base}/prompt/{prompt_segment}"
         if query:
             image_url = f"{image_url}?{query}"
 
