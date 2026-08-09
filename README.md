@@ -53,3 +53,7 @@ Create 3D concept art prompts and generate Pollinations image URLs from a simple
 ## Notes
 
 - If the app is still pointed at the placeholder example API, it returns sample content so the UI remains usable.
+
+## License
+
+This repository does not currently include a LICENSE file.
