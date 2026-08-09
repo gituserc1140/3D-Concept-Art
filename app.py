@@ -161,7 +161,8 @@ textarea {
 """
 
 # ── Style options exposed to the user ──────────────────────────────────────────
-_STYLE_OPTIONS = [
+# Generic art styles
+_STYLE_OPTIONS_GENERAL = [
     "cinematic",
     "sci-fi",
     "fantasy",
@@ -170,46 +171,123 @@ _STYLE_OPTIONS = [
     "post-apocalyptic",
     "dark fantasy",
     "photorealistic",
+]
+
+# 3D-print-focused styles with dedicated prompt templates
+_STYLE_OPTIONS_3D_PRINT = [
+    "3D print ready",
+    "miniature figurine",
+    "architectural model",
+    "technical blueprint",
+    "resin print concept",
     "sketch 3D print",
 ]
 
+_STYLE_OPTIONS = _STYLE_OPTIONS_3D_PRINT + _STYLE_OPTIONS_GENERAL
+
+# 3D-print-relevant subject presets
 _SUBJECT_OPTIONS = [
-    "spaceship hangar",
-    "ancient ruins",
-    "futuristic city",
-    "dragon lair",
-    "underwater base",
-    "floating islands",
-    "crystal cave",
-    "mech workshop",
-    "alien landscape",
-    "forest temple",
+    "figurine character",
+    "terrain tile",
+    "terrain scatter piece",
+    "architectural facade detail",
+    "mechanical assembly",
+    "miniature creature",
+    "jewellery / ring design",
+    "cosplay prop",
+    "abstract sculpture",
+    "modular dungeon tile",
 ]
+
+# Aspect ratio presets (label → (width, height))
+_ASPECT_PRESETS = {
+    "1:1 Square — single piece (1024×1024)": (1024, 1024),
+    "3:4 Portrait — tall figurine (768×1024)": (768, 1024),
+    "4:3 Landscape — terrain tile (1024×768)": (1024, 768),
+    "16:9 Wide — panoramic scene (1024×576)": (1024, 576),
+}
+
+# ── Prompt templates per 3D-print style ───────────────────────────────────────
+
+_PRINT_STYLE_PROMPTS = {
+    "3D print ready": (
+        "3D print ready concept art, {concept}. "
+        "Clean geometry optimised for FDM printing, visible wall thickness, "
+        "minimal overhangs, support-free design where possible, "
+        "uniform neutral lighting to reveal surface topology, white studio background, "
+        "professional product render, sharp edges."
+    ),
+    "miniature figurine": (
+        "miniature figurine concept art, {concept}. "
+        "Tabletop-scale figurine design, heroic proportions, "
+        "exaggerated detail for small-scale printing, textured base included, "
+        "neutral grey material preview, soft studio lighting, "
+        "28mm scale miniature aesthetic."
+    ),
+    "architectural model": (
+        "architectural scale model concept art, {concept}. "
+        "Cross-section view showing internal structure, "
+        "clean white model aesthetic, layer lines suggested, "
+        "precise geometric forms, professional architectural illustration, "
+        "isometric perspective, monochrome with accent colour highlights."
+    ),
+    "technical blueprint": (
+        "technical blueprint concept art, {concept}. "
+        "Engineering drawing style, orthographic projection, "
+        "dimension lines and annotations, grid paper background, "
+        "cyan-on-navy blueprint colour scheme, fine line detail, "
+        "sectional view, 3D printable assembly breakdown."
+    ),
+    "resin print concept": (
+        "resin 3D print concept art, {concept}. "
+        "High-detail resin print aesthetic, ultra-fine surface detail, "
+        "smooth organic curves, translucent material preview, "
+        "SLA/MSLA layer resolution implied, dramatic backlit studio lighting, "
+        "jewellery-quality finish, intricate filigree detail."
+    ),
+    "sketch 3D print": (
+        "sketch-style 3D print concept art, {concept}. "
+        "Hand-drawn pencil sketch aesthetic, 3D printable figurine design, "
+        "detailed line art, blueprint style, technical illustration, "
+        "white background with fine ink lines."
+    ),
+}
 
 
 # ── Image generation ───────────────────────────────────────────────────────────
 
-def generate_image(concept: str, style: str, width: int = 1024, height: int = 1024) -> bytes:
-    """Fetch a 3D concept art image from Pollinations.AI."""
-    if style == "sketch 3D print":
-        prompt = (
-            f"sketch-style 3D print concept art, {concept}. "
-            "Hand-drawn pencil sketch aesthetic, 3D printable figurine design, "
-            "detailed line art, blueprint style, technical illustration, "
-            "white background with fine ink lines."
-        )
-    else:
-        prompt = (
-            f"3D concept art, {style} style, {concept}. "
-            "Highly detailed, dramatic lighting, cinematic composition, "
-            "professional 3D render, 8K resolution."
-        )
-    params = urllib.parse.urlencode({
+def build_prompt(concept: str, style: str) -> str:
+    """Construct the full image-generation prompt for the given style."""
+    if style in _PRINT_STYLE_PROMPTS:
+        return _PRINT_STYLE_PROMPTS[style].format(concept=concept)
+    return (
+        f"3D concept art, {style} style, {concept}. "
+        "Highly detailed, dramatic lighting, cinematic composition, "
+        "professional 3D render, 8K resolution."
+    )
+
+
+def generate_image(
+    concept: str,
+    style: str,
+    width: int = 1024,
+    height: int = 1024,
+    seed: int | None = None,
+) -> tuple[bytes, str]:
+    """Fetch a 3D concept art image from Pollinations.AI.
+
+    Returns a tuple of (image_bytes, prompt_used).
+    """
+    prompt = build_prompt(concept, style)
+    query: dict = {
         "width": width,
         "height": height,
         "nologo": "true",
         "model": "flux",
-    })
+    }
+    if seed is not None:
+        query["seed"] = seed
+    params = urllib.parse.urlencode(query)
     url = f"{_POLLINATIONS_BASE.format(prompt=urllib.parse.quote(prompt))}?{params}"
     try:
         response = requests.get(url, timeout=120)
@@ -227,7 +305,7 @@ def generate_image(concept: str, style: str, width: int = 1024, height: int = 10
             f"Pollinations.AI returned an error ({exc.response.status_code}). "
             "Please try a different prompt or try again later."
         ) from exc
-    return response.content
+    return response.content, prompt
 
 
 # ── Main app ───────────────────────────────────────────────────────────────────
@@ -253,8 +331,19 @@ def main():
     # ── Sidebar ────────────────────────────────────────────────────
     st.sidebar.header("Settings")
 
-    width = st.sidebar.selectbox("Image width", [512, 768, 1024], index=2)
-    height = st.sidebar.selectbox("Image height", [512, 768, 1024], index=2)
+    aspect_label = st.sidebar.selectbox(
+        "Print bed aspect ratio",
+        list(_ASPECT_PRESETS.keys()),
+        index=0,
+    )
+    width, height = _ASPECT_PRESETS[aspect_label]
+
+    seed_enabled = st.sidebar.checkbox("Fix random seed (reproducible results)", value=False)
+    seed: int | None = None
+    if seed_enabled:
+        seed = st.sidebar.number_input("Seed", min_value=0, max_value=2**31 - 1, value=42, step=1)
+
+    compare_mode = st.sidebar.checkbox("Side-by-side style comparison", value=False)
 
     st.sidebar.markdown(
         f"""
@@ -274,7 +363,9 @@ def main():
     )
 
     # ── Inputs ─────────────────────────────────────────────────────
-    style = st.selectbox("Art style", _STYLE_OPTIONS)
+    st.markdown("##### Art Style")
+    st.caption("3D-print styles appear first; general styles follow.")
+    style = st.selectbox("Art style", _STYLE_OPTIONS, label_visibility="collapsed")
 
     subject_choice = st.selectbox(
         "Pick a subject (or choose 'Custom' to type your own)",
@@ -288,24 +379,67 @@ def main():
     else:
         concept = subject_choice
 
+    if compare_mode:
+        style2 = st.selectbox("Second style (comparison)", _STYLE_OPTIONS, index=1, key="style2")
+    else:
+        style2 = _STYLE_OPTIONS[1]
+
     if st.button("Generate Concept Art"):
         if not concept.strip():
             st.warning("Please enter or select a concept first.")
             st.stop()
 
-        try:
-            with st.spinner("Rendering your concept art…"):
-                image_bytes = generate_image(concept.strip(), style, width=int(width), height=int(height))
+        concept_clean = concept.strip()
 
-            st.markdown('<div class="section-label">Generated Art</div>', unsafe_allow_html=True)
-            st.image(
-                image_bytes,
-                caption=f"{style.capitalize()} — {concept.strip().capitalize()}",
-                use_container_width=True,
-            )
+        if compare_mode:
+            col1, col2 = st.columns(2)
+            for i, (col, s) in enumerate(zip([col1, col2], [style, style2])):
+                with col:
+                    try:
+                        with st.spinner(f"Rendering {s}…"):
+                            img, used_prompt = generate_image(
+                                concept_clean, s, width=width, height=height, seed=seed
+                            )
+                        st.markdown(
+                            f'<div class="section-label">{s.capitalize()}</div>',
+                            unsafe_allow_html=True,
+                        )
+                        st.image(img, caption=f"{s} — {concept_clean.capitalize()}", use_container_width=True)
+                        st.download_button(
+                            label="⬇ Download PNG",
+                            data=img,
+                            file_name=f"{s.replace(' ', '_')}_{concept_clean[:30].replace(' ', '_')}.png",
+                            mime="image/png",
+                            key=f"dl_{i}_{s}",
+                        )
+                        with st.expander("Prompt used"):
+                            st.code(used_prompt, language=None)
+                    except Exception as exc:
+                        st.error(f"Something went wrong: {exc}")
+        else:
+            try:
+                with st.spinner("Rendering your concept art…"):
+                    image_bytes, used_prompt = generate_image(
+                        concept_clean, style, width=width, height=height, seed=seed
+                    )
 
-        except Exception as exc:
-            st.error(f"Something went wrong: {exc}")
+                st.markdown('<div class="section-label">Generated Art</div>', unsafe_allow_html=True)
+                st.image(
+                    image_bytes,
+                    caption=f"{style.capitalize()} — {concept_clean.capitalize()}",
+                    use_container_width=True,
+                )
+                st.download_button(
+                    label="⬇ Download PNG",
+                    data=image_bytes,
+                    file_name=f"{style.replace(' ', '_')}_{concept_clean[:30].replace(' ', '_')}.png",
+                    mime="image/png",
+                )
+                with st.expander("Prompt used"):
+                    st.code(used_prompt, language=None)
+
+            except Exception as exc:
+                st.error(f"Something went wrong: {exc}")
 
 
 if __name__ == "__main__":
