@@ -8,7 +8,7 @@ This module provides a small request wrapper `make_request()` and a minimal
 import os
 import requests
 from typing import Any, Dict, Optional
-from urllib.parse import quote, urlencode
+from urllib.parse import quote, urlencode, urlsplit
 from config import settings
 
 
@@ -72,7 +72,7 @@ def fetch_data(params: Optional[Dict[str, Any]] = None, api_key: Optional[str] =
         pollinations_params = {k: v for k, v in params.items() if k != "prompt" and v not in (None, "")}
         query = urlencode(pollinations_params)
         prompt_segment = quote(prompt, safe="")
-        if base_url.endswith("/prompt"):
+        if urlsplit(base_url).path.rstrip("/").endswith("/prompt"):
             image_url = f"{base_url}/{prompt_segment}"
         else:
             image_url = f"{base_url}/prompt/{prompt_segment}"
