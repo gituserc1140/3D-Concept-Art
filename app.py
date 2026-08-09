@@ -19,6 +19,7 @@ import streamlit as st
 # ── Constants ──────────────────────────────────────────────────────────────────
 _GITHUB_URL = "https://github.com/gituserc1140/3D-Concept-Art"
 _SPONSOR_URL = "https://github.com/sponsors/gituserc1140"
+_STREAMLIT_APP_URL = "https://3d-concept-art-u9nsolcjujhw9ngtx9vxks.streamlit.app/"
 _POLLINATIONS_BASE = "https://image.pollinations.ai/prompt/{prompt}"
 
 # ── CSS ────────────────────────────────────────────────────────────────────────
@@ -137,6 +138,11 @@ _CSS = """
     color: #ffffff !important;
     border: 1px solid #9e2d6f;
 }
+.gh-btn-streamlit {
+    background: #ff4b4b;
+    color: #ffffff !important;
+    border: 1px solid #cc3c3c;
+}
 
 /* ── Warning / spinner ─────────────────────────────────────────── */
 [data-testid="stAlert"] p { color: #ffffff !important; }
@@ -164,6 +170,7 @@ _STYLE_OPTIONS = [
     "post-apocalyptic",
     "dark fantasy",
     "photorealistic",
+    "sketch 3D print",
 ]
 
 _SUBJECT_OPTIONS = [
@@ -184,11 +191,19 @@ _SUBJECT_OPTIONS = [
 
 def generate_image(concept: str, style: str, width: int = 1024, height: int = 1024) -> bytes:
     """Fetch a 3D concept art image from Pollinations.AI."""
-    prompt = (
-        f"3D concept art, {style} style, {concept}. "
-        "Highly detailed, dramatic lighting, cinematic composition, "
-        "professional 3D render, 8K resolution."
-    )
+    if style == "sketch 3D print":
+        prompt = (
+            f"sketch-style 3D print concept art, {concept}. "
+            "Hand-drawn pencil sketch aesthetic, 3D printable figurine design, "
+            "detailed line art, blueprint style, technical illustration, "
+            "white background with fine ink lines."
+        )
+    else:
+        prompt = (
+            f"3D concept art, {style} style, {concept}. "
+            "Highly detailed, dramatic lighting, cinematic composition, "
+            "professional 3D render, 8K resolution."
+        )
     params = urllib.parse.urlencode({
         "width": width,
         "height": height,
@@ -244,6 +259,9 @@ def main():
     st.sidebar.markdown(
         f"""
         <div class="gh-buttons">
+            <a class="gh-btn gh-btn-streamlit" href="{_STREAMLIT_APP_URL}" target="_blank">
+                ▶ Open in Streamlit
+            </a>
             <a class="gh-btn gh-btn-github" href="{_GITHUB_URL}" target="_blank">
                 ⭐ View on GitHub
             </a>
