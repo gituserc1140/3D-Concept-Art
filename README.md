@@ -45,6 +45,11 @@ Create 3D concept art prompts and generate Pollinations image URLs from a simple
    ```
 4. Click **Generate concept**
 
+## Configuration
+
+- `config/settings.py` provides defaults for `API_BASE_URL`, `API_KEY`, and `DEFAULT_TIMEOUT`
+- You can override `API_BASE_URL` and `API_KEY` with environment variables or by entering values in the Streamlit UI
+
 ## Notes
 
 - If the app is still pointed at the placeholder example API, it returns sample content so the UI remains usable.
