@@ -177,7 +177,8 @@ _CSS = """
 textarea {
     background: rgba(255,255,255,0.06) !important;
     border: 1px solid rgba(167,139,250,0.3) !important;
-    color: #f1f5f9 !important;
+    color: #000000 !important;
+    -webkit-text-fill-color: #000000 !important;
     border-radius: 8px !important;
 }
 </style>
